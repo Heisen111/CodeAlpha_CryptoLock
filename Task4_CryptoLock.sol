@@ -8,15 +8,14 @@ pragma solidity ^0.8.0;
  *         withdraw after the lock period has passed.
  */
 contract CryptoLock {
-
     // ──────────────────────────────────────────────
     // Data Structures
     // ──────────────────────────────────────────────
 
     struct Deposit {
-        uint256 amount;       // Amount of ETH locked (in wei)
-        uint256 unlockTime;   // Unix timestamp after which withdrawal is allowed
-        bool    exists;       // Guard to distinguish empty structs
+        uint256 amount; // Amount of ETH locked (in wei)
+        uint256 unlockTime; // Unix timestamp after which withdrawal is allowed
+        bool exists; // Guard to distinguish empty structs
     }
 
     // ──────────────────────────────────────────────
@@ -30,22 +29,11 @@ contract CryptoLock {
     // Events
     // ──────────────────────────────────────────────
 
-    event Deposited(
-        address indexed user,
-        uint256 amount,
-        uint256 unlockTime
-    );
+    event Deposited(address indexed user, uint256 amount, uint256 unlockTime);
 
-    event Withdrawn(
-        address indexed user,
-        uint256 amount
-    );
+    event Withdrawn(address indexed user, uint256 amount);
 
-    event TopUp(
-        address indexed user,
-        uint256 addedAmount,
-        uint256 newTotal
-    );
+    event TopUp(address indexed user, uint256 addedAmount, uint256 newTotal);
 
     // ──────────────────────────────────────────────
     // Core Functions
@@ -58,7 +46,10 @@ contract CryptoLock {
      */
     function deposit(uint256 _lockDurationSeconds) external payable {
         require(msg.value > 0, "Must deposit some Ether");
-        require(_lockDurationSeconds > 0, "Lock duration must be greater than zero");
+        require(
+            _lockDurationSeconds > 0,
+            "Lock duration must be greater than zero"
+        );
 
         // If the user already has an active deposit, top it up
         if (deposits[msg.sender].exists && deposits[msg.sender].amount > 0) {
@@ -76,9 +67,9 @@ contract CryptoLock {
             uint256 unlockTime = block.timestamp + _lockDurationSeconds;
 
             deposits[msg.sender] = Deposit({
-                amount:     msg.value,
+                amount: msg.value,
                 unlockTime: unlockTime,
-                exists:     true
+                exists: true
             });
 
             emit Deposited(msg.sender, msg.value, unlockTime);
@@ -98,16 +89,16 @@ contract CryptoLock {
         // ── TIME-LOCK CHECK ──────────────────────────────────────────────
         require(
             block.timestamp >= userDeposit.unlockTime,
-            "Funds are still locked — please wait until the unlock time"
+            "Funds are still locked, please wait until the unlock time"
         );
         // ────────────────────────────────────────────────────────────────
 
         uint256 amountToSend = userDeposit.amount;
 
         // Reset storage before transfer (Checks-Effects-Interactions pattern)
-        userDeposit.amount     = 0;
+        userDeposit.amount = 0;
         userDeposit.unlockTime = 0;
-        userDeposit.exists     = false;
+        userDeposit.exists = false;
 
         (bool success, ) = payable(msg.sender).call{value: amountToSend}("");
         require(success, "Transfer failed");
@@ -133,7 +124,7 @@ contract CryptoLock {
             uint256 amount,
             uint256 unlockTime,
             uint256 timeRemaining,
-            bool    isLocked
+            bool isLocked
         )
     {
         Deposit storage d = deposits[msg.sender];
@@ -154,21 +145,15 @@ contract CryptoLock {
      * @dev Returns deposit info for any address (public view)
      * @param _user The address to query
      */
-    function getDepositOf(address _user)
+    function getDepositOf(
+        address _user
+    )
         external
         view
-        returns (
-            uint256 amount,
-            uint256 unlockTime,
-            bool    isLocked
-        )
+        returns (uint256 amount, uint256 unlockTime, bool isLocked)
     {
         Deposit storage d = deposits[_user];
-        return (
-            d.amount,
-            d.unlockTime,
-            block.timestamp < d.unlockTime
-        );
+        return (d.amount, d.unlockTime, block.timestamp < d.unlockTime);
     }
 
     /**
